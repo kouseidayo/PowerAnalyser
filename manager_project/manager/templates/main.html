@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div>
+    <h1><span>あなたの戦闘力を</span><span>測定します</span></h1>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+
+    const chars = ["(ノロдロ-)測定中.", "(ノロдロ-)測定中..", "(ノロдロ-)測定中..."];
+    var index = 0;
+    var timer = null;
+
+    $(document).ready(function(){
+        $("#submitBtn").click(function(){
+
+            //送信中のステータスを動かす
+            timer = setInterval(function () {
+                index = (index + 1) % chars.length;
+                displayStatus(chars[index]);
+            }, 500);
+
+            var formData = new FormData();
+
+            var fileInput = $('#imageInput')[0].files[0];
+            formData.append('image', fileInput);
+
+            var kaioukenValue = $("#kaiouken").val(); // 隠しフィールドの値を取得
+            formData.append('kaiouken', kaioukenValue); // 取得した値を追加
+
+            // CSRFトークンを取得してリクエストに追加
+            var csrfToken = "{{ csrf_token }}";
+            formData.append('csrfmiddlewaretoken', csrfToken);
+            
+            $.ajax({
+                url: "{% url 'post_ajax' %}", // サーバーのエンドポイントを指定
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response){
+                    //タイマークリア
+                    clearInterval(timer);
+                    timer = null;
+                    //結果の表示
+                    score_message = ["あなたの戦闘力は「",response.score,"」です!"]
+                    displayImage(response.image);
+                    displayScore(score_message.join(" "));
+                    displayStatus('(ノロдロ-)測定完了!!');
+                },
+                error: function(response, status, error){
+                    //タイマークリア
+                    clearInterval(timer);
+                    timer = null;
+                    // エラー時の処理
+                    displayStatus('｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡送信失敗');
+                }
+            });
+        });
+    });
+
+    // 画像を表示する関数
+    function displayImage(imageData) {
+                var imageContainer = document.getElementById('image-container');
+                var img = new Image();
+                img.src = 'data:image/jpeg;base64,' + imageData; // Base64エンコードされた画像データ
+                imageContainer.innerHTML = '';
+                imageContainer.appendChild(img);
+            }
+
+    // ステータスを表示する関数
+    function displayStatus(text) {
+        var statusContainer = document.getElementById('status');
+        statusContainer.innerHTML = text;
+    }
+
+    // スコアを表示する関数
+    function displayScore(text) {
+        var scoreContainer = document.getElementById('score');
+        scoreContainer.innerHTML = text;
+    }
+</script>
+<br>
+        {% if IsKaiouken %}
+            <input type = "hidden" id="kaiouken" value=10>
+        {% else %}
+            <input type = "hidden" id="kaiouken" value=1>
+        {% endif %}
+<br>
+<div id="status"></div>
+<div id="score"></div>
+
+<br>
+<input type="file" id="imageInput">
+<button id="submitBtn">画像を送信</button>
+<br>
+
+<div id="image-container"></div>
+
+
+
+{% endblock %}
